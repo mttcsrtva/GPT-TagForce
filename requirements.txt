@@ -1,1 +1,7 @@
 streamlit
+pandas
+networkx
+pillow
+openai
+scipy
+jsonschema

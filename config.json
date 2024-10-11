@@ -1,0 +1,5 @@
+{
+    "system_prompt": "You are an AI assistant specialized in art analysis. Provide detailed descriptions and comprehensive tags for paintings, focusing on subjects, styles, and artistic elements.",
+    "model_name": "gpt-4o-mini",
+    "max_tokens": 300
+}

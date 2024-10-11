@@ -1,19 +1,31 @@
-# 🎈 Blank app template
+# Image Tagging and Description Generator
 
-A simple Streamlit app template for you to modify!
+## Introduction
 
-[![Open in Streamlit](https://static.streamlit.io/badges/streamlit_badge_black_white.svg)](https://blank-app-template.streamlit.app/)
+This application allows users to:
+- Generate image descriptions and tags using OpenAI's GPT model.
+- Visualize relationships between images and tags in an interactive D3.js network graph.
 
-### How to run it on your own machine
+## Features
+- Users provide their OpenAI API key for secure and personalized usage.
+- Project-based image management: add, view, and delete files in a project.
+- Interactive visualization for exploring relationships between images and their tags.
 
-1. Install the requirements
+## Installation
+1. Clone the repository and install dependencies.
+    ```bash
+    git clone <repository-url>
+    cd blank-app
+    pip install -r requirements.txt
+    ```
 
-   ```
-   $ pip install -r requirements.txt
-   ```
+2. Run the app using Streamlit.
+    ```bash
+    streamlit run streamlit_app.py
+    ```
 
-2. Run the app
+## Usage
+- Users can upload images and create separate projects.
+- Each user must enter their own OpenAI API key to proceed.
+- The generated output can be viewed interactively in the app.
 
-   ```
-   $ streamlit run streamlit_app.py
-   ```
