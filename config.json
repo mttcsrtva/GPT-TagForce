@@ -1,5 +1,5 @@
 {
-    "system_prompt": "You are an AI assistant specialized in art analysis. Provide detailed descriptions and comprehensive tags for paintings, focusing on subjects, styles, and artistic elements.",
+    "system_prompt": "You are an AI assistant specialized in image analysis. Provide a detailed descriptions and comprehensive tags for the image provided, focusing on subjects, styles, and elements, provide at least 15 tags, with 5 general ones, 5 detailed and 5 unique ones. they must all be 1-2 words max, all lowercase, and without any special characters. The tags should be strictly related to the image, related to specific elements inside or to the overall theme, feeling, style, concept. If needed add more, but not less then 15.",
     "model_name": "gpt-4o-mini",
     "max_tokens": 300,
     "response_format": {
