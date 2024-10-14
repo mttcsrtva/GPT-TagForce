@@ -1,9 +1,9 @@
-# **TagForge**  
+# **GPT-TagForce**  
 *A Research & Development Beta*
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
-Welcome to **TagForge**, a beta-stage R&D tool designed to generate image descriptions and tags using OpenAI models. This app is a sandbox for exploring image-tag relationships through interactive graph visualization. Please note, it’s still under active development—expect a few rough edges while we continue refining the forge!
+Welcome to **GPT-TagForce**, a beta-stage R&D tool designed to generate image descriptions and tags using OpenAI models. This app is a sandbox for exploring image-tag relationships through interactive graph visualization. Please note, it’s still under active development—expect a few rough edges while we continue refining the Force!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
@@ -12,7 +12,7 @@ Welcome to **TagForge**, a beta-stage R&D tool designed to generate image descri
 1. **Clone the repository**:
     ```bash
     git clone <repository-url>
-    cd TagForge
+    cd GPT-TagForce
     ```
 
 2. **Install dependencies**:
@@ -54,7 +54,7 @@ Welcome to **TagForge**, a beta-stage R&D tool designed to generate image descri
 
 ## About (づ ＼＾ ‿＾)］
 
-Developed by **Mattia** at **The Visual Agency**, **TagForge** is an experimental project focused on AI-driven image analysis and tagging. Your feedback and testing are welcome as we continue to develop this research tool!
+Developed by **Mattia** at **The Visual Agency**, **GPT-TagForce** is an experimental project focused on AI-driven image analysis and tagging. Your feedback and testing are welcome as we continue to develop this research tool!
 
 ━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━━
 
