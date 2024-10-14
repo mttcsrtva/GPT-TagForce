@@ -5,18 +5,26 @@
     <title>Interactive Force-Directed Graph</title>
     <style>
         body {
-            font-family: Arial, sans-serif;
+            font-family: 'Arial', sans-serif;
+            line-height: 1.6;
+            color: #333;
             background-color: #f4f4f4;
+            margin: 0;
+            padding: 0;
         }
         #graph-container {
             width: 100%;
             height: 800px;
-            border: 1px solid #ccc;
-            margin-bottom: 20px;
+            border: 2px solid #333;
+            margin-bottom: 40px;
+            overflow: hidden;
         }
         svg {
             width: 100%;
             height: 100%;
+        }
+        .node {
+            cursor: pointer;
         }
         .node text {
             pointer-events: none;
@@ -26,49 +34,271 @@
             stroke: #999;
             stroke-opacity: 0.6;
         }
+        .hidden {
+            opacity: 0.2;
+        }
+        /* Styling for tag nodes */
+        .tag-node rect {
+            fill: #fff;
+            stroke: #333;
+            rx: 5;
+            ry: 5;
+        }
+        .tag-node text {
+            fill: #333;
+            font-size: 12px;
+        }
+        /* Tooltip Styles */
+        #tooltip {
+            position: absolute;
+            text-align: center;
+            padding: 10px;
+            font-size: 12px;
+            background: #333;
+            color: #fff;
+            border: 0px;
+            border-radius: 8px;
+            pointer-events: none;
+        }
+        /* Modal Styles */
+        #modal {
+            display: none;
+            position: fixed;
+            z-index: 2000;
+            padding-top: 100px;
+            left: 0;
+            top: 0;
+            width: 100%;
+            height: 100%;
+            overflow: auto;
+            background-color: rgba(51, 51, 51, 0.95);
+        }
+        #modal-content {
+            background-color: #fff;
+            margin: auto;
+            padding: 20px;
+            max-width: 800px;
+            position: relative;
+            border: 2px solid #333;
+        }
+        #close-button {
+            position: absolute;
+            top: 10px;
+            right: 20px;
+            font-size: 2rem;
+            color: #333;
+            cursor: pointer;
+        }
+        #modal-body img {
+            max-width: 100%;
+            height: auto;
+            margin-bottom: 20px;
+        }
+        #modal-body h2 {
+            margin-top: 0;
+        }
+        .hidden {
+            display: none;
+        }
     </style>
 </head>
 <body>
     <div id="graph-container"></div>
+    <div id="tooltip" class="hidden"></div>
+    <div id="modal">
+        <div id="modal-content">
+            <span id="close-button">&times;</span>
+            <div id="modal-body"></div>
+        </div>
+    </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-        // Placeholder for graph data
+        // Graph data injected from app.py
         const graph = <!--GRAPH_DATA_PLACEHOLDER-->;
 
+        // Set up SVG and Zoom
         const width = window.innerWidth;
         const height = 800;
 
         const svg = d3.select("#graph-container").append("svg")
             .attr("width", width)
-            .attr("height", height);
+            .attr("height", height)
+            .call(d3.zoom()
+                .scaleExtent([0.1, 10])
+                .on("zoom", function (event) {
+                    g.attr("transform", event.transform);
+                }));
 
-        const link = svg.append("g")
+        const g = svg.append("g");
+
+        // Define simulation
+        const simulation = d3.forceSimulation(graph.nodes)
+            .force("link", d3.forceLink(graph.links).id(d => d.id).distance(150))
+            .force("charge", d3.forceManyBody().strength(-300))
+            .force("center", d3.forceCenter(width / 2, height / 2));
+
+        // Define links
+        const link = g.append("g")
             .attr("class", "links")
             .selectAll("line")
             .data(graph.links)
             .enter().append("line")
             .attr("class", "link");
 
-        const node = svg.append("g")
+        // Define nodes
+        const node = g.append("g")
             .attr("class", "nodes")
             .selectAll("g")
             .data(graph.nodes)
-            .enter().append("g");
+            .enter().append("g")
+            .attr("class", d => d.type === 'tag' ? 'node tag-node' : 'node')
+            .on("mouseover", mouseOver)
+            .on("mouseout", mouseOut)
+            .on("click", nodeClicked)
+            .call(drag(simulation));
 
-        node.append("circle")
-            .attr("r", 5)
-            .attr("fill", "blue");
+        // Add images or tag boxes to nodes
+        node.each(function(d) {
+            if (d.type === 'image') {
+                d3.select(this).append("image")
+                    .attr("xlink:href", d.image_data)
+                    .attr("x", -50)
+                    .attr("y", -50)
+                    .attr("width", 100)
+                    .attr("height", 100);
+            } else if (d.type === 'tag') {
+                const group = d3.select(this);
 
-        node.append("text")
-            .text(d => d.id)
-            .attr('x', 6)
-            .attr('y', 3);
+                const text = group.append("text")
+                    .text(d.name)
+                    .attr("dy", 4);
 
-        const simulation = d3.forceSimulation(graph.nodes)
-            .force("link", d3.forceLink(graph.links).id(d => d.id))
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2));
+                const bbox = text.node().getBBox();
+                group.insert("rect", "text")
+                    .attr("x", bbox.x - 5)
+                    .attr("y", bbox.y - 2)
+                    .attr("width", bbox.width + 10)
+                    .attr("height", bbox.height + 4);
+            }
+        });
 
+        // Tooltip
+        const tooltip = d3.select("#tooltip");
+
+        function mouseOver(event, d) {
+            // Highlight connected nodes
+            const connectedNodes = new Set();
+            connectedNodes.add(d.id);
+            graph.links.forEach(link => {
+                if (link.source.id === d.id) {
+                    connectedNodes.add(link.target.id);
+                } else if (link.target.id === d.id) {
+                    connectedNodes.add(link.source.id);
+                }
+            });
+            node.classed('hidden', n => !connectedNodes.has(n.id));
+            link.classed('hidden', l => !(connectedNodes.has(l.source.id) && connectedNodes.has(l.target.id)));
+
+            // Show tooltip
+            tooltip
+                .style('left', (event.pageX + 10) + 'px')
+                .style('top', (event.pageY + 10) + 'px')
+                .html(d.type === 'image' ? d.filename : d.name)
+                .classed('hidden', false);
+        }
+
+        function mouseOut(event, d) {
+            // Reset opacity
+            node.classed('hidden', false);
+            link.classed('hidden', false);
+
+            // Hide tooltip
+            tooltip.classed('hidden', true);
+        }
+
+        function nodeClicked(event, d) {
+            if (d.type === 'image') {
+                // Display modal with image information
+                showModal(d);
+            } else if (d.type === 'tag') {
+                // Filter graph to show only nodes connected to this tag
+                filterGraph(d);
+            }
+        }
+
+        function filterGraph(tagNode) {
+            const connectedNodes = new Set();
+            const secondLevelNodes = new Set();
+            connectedNodes.add(tagNode.id);
+            graph.links.forEach(link => {
+                if (link.source.id === tagNode.id) {
+                    connectedNodes.add(link.target.id);
+                } else if (link.target.id === tagNode.id) {
+                    connectedNodes.add(link.source.id);
+                }
+            });
+            // Get second level connections (tags connected to images)
+            graph.links.forEach(link => {
+                if (connectedNodes.has(link.source.id) && !connectedNodes.has(link.target.id)) {
+                    secondLevelNodes.add(link.target.id);
+                } else if (connectedNodes.has(link.target.id) && !connectedNodes.has(link.source.id)) {
+                    secondLevelNodes.add(link.source.id);
+                }
+            });
+            const visibleNodes = new Set([...connectedNodes, ...secondLevelNodes]);
+            node.classed('hidden', n => !visibleNodes.has(n.id));
+            link.classed('hidden', l => !(visibleNodes.has(l.source.id) && visibleNodes.has(l.target.id)));
+        }
+
+        function showModal(d) {
+            const modal = document.getElementById("modal");
+            const modalContent = document.getElementById("modal-body");
+            modalContent.innerHTML = `
+                <h2>${d.filename}</h2>
+                <p><strong>Description:</strong> ${d.description}</p>
+                <img src="${d.image_data}" alt="${d.filename}">
+            `;
+            modal.style.display = "block";
+        }
+
+        document.getElementById("close-button").addEventListener("click", () => {
+            document.getElementById("modal").style.display = "none";
+        });
+
+        // Close modal when clicking outside of the content
+        window.addEventListener("click", (event) => {
+            const modal = document.getElementById("modal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Drag functionality
+        function drag(simulation) {
+            function dragstarted(event, d) {
+                if (!event.active) simulation.alphaTarget(0.3).restart();
+                d.fx = d.x;
+                d.fy = d.y;
+            }
+
+            function dragged(event, d) {
+                d.fx = event.x;
+                d.fy = event.y;
+            }
+
+            function dragended(event, d) {
+                if (!event.active) simulation.alphaTarget(0);
+                d.fx = null;
+                d.fy = null;
+            }
+
+            return d3.drag()
+                .on("start", dragstarted)
+                .on("drag", dragged)
+                .on("end", dragended);
+        }
+
+        // Simulation tick
         simulation.on("tick", () => {
             link
                 .attr("x1", d => d.source.x)

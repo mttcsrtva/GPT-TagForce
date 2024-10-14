@@ -1,0 +1,49 @@
+{
+    "images": [
+        {
+            "filename": "b0117124a90a41009d49a6f08b2c811e_C1.jpeg",
+            "original_filename": "C1.jpeg",
+            "description": "A portrait of a man with a well-groomed mustache and a goatee, wearing a dark blazer over a black turtleneck. The background features a colorful, abstract pattern, enhancing the visual appeal of the image.",
+            "tags": [
+                "portrait",
+                "man",
+                "mustache",
+                "goatee",
+                "blazer",
+                "turtleneck",
+                "abstract background",
+                "colorful",
+                "smiling"
+            ]
+        },
+        {
+            "filename": "2e54605430b04705bb042b399b61f312_IMG_6154.jpg",
+            "original_filename": "IMG_6154.jpg",
+            "description": "A person stands on a rocky beach, with one arm raised dramatically towards the sky. The background features a clear blue sky and calm water, with a few small boats visible in the distance. The setting appears to be a sunny day by the sea.",
+            "tags": [
+                "person",
+                "beach",
+                "rocky shore",
+                "water",
+                "sky",
+                "boats",
+                "sunny",
+                "casual clothing",
+                "raised arm"
+            ]
+        },
+        {
+            "filename": "722f2b2535cb4d58aef53957d62dea69_M1.jpg",
+            "original_filename": "M1.jpg",
+            "description": "A young man with a beard and earrings is posed against a solid black background. He is wearing a dark, simple sweatshirt and looking directly at the camera with a neutral expression.",
+            "tags": [
+                "young man",
+                "beard",
+                "earrings",
+                "black background",
+                "sweatshirt",
+                "neutral expression"
+            ]
+        }
+    ]
+}
