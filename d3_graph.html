@@ -18,6 +18,7 @@
             border: 2px solid #333;
             margin-bottom: 40px;
             overflow: hidden;
+            position: relative;
         }
         svg {
             width: 100%;
@@ -37,7 +38,6 @@
         .hidden {
             opacity: 0.2;
         }
-        /* Styling for tag nodes */
         .tag-node rect {
             fill: #fff;
             stroke: #333;
@@ -48,7 +48,6 @@
             fill: #333;
             font-size: 12px;
         }
-        /* Tooltip Styles */
         #tooltip {
             position: absolute;
             text-align: center;
@@ -60,12 +59,11 @@
             border-radius: 8px;
             pointer-events: none;
         }
-        /* Modal Styles */
         #modal {
             display: none;
             position: fixed;
             z-index: 2000;
-            padding-top: 100px;
+            padding-top: 50px;
             left: 0;
             top: 0;
             width: 100%;
@@ -78,8 +76,10 @@
             margin: auto;
             padding: 20px;
             max-width: 800px;
+            max-height: 80vh;
             position: relative;
             border: 2px solid #333;
+            overflow-y: auto;
         }
         #close-button {
             position: absolute;
@@ -97,13 +97,78 @@
         #modal-body h2 {
             margin-top: 0;
         }
-        .hidden {
-            display: none;
+        #search-container {
+            position: absolute;
+            top: 10px;
+            left: 10px;
+            z-index: 1000;
+        }
+        #search-input {
+            width: 200px;
+            padding: 5px;
+            font-size: 14px;
+            border: 2px solid #333;
+            border-radius: 4px;
+            background-color: white;
+        }
+        #search-input::placeholder {
+            color: #999;
+            opacity: 0.7;
+        }
+        #autocomplete-list {
+            position: absolute;
+            border: 1px solid #d4d4d4;
+            border-bottom: none;
+            border-top: none;
+            z-index: 99;
+            top: 100%;
+            left: 0;
+            right: 0;
+            background-color: white;
+        }
+        .autocomplete-items {
+            padding: 10px;
+            cursor: pointer;
+            background-color: #fff;
+            border-bottom: 1px solid #d4d4d4;
+        }
+        .autocomplete-items:hover {
+            background-color: #e9e9e9;
+        }
+        .modal-tag {
+            display: inline-block;
+            background-color: #f1f1f1;
+            border: 1px solid #d4d4d4;
+            border-radius: 4px;
+            padding: 2px 8px;
+            margin: 2px;
+            cursor: pointer;
+        }
+        .modal-tag:hover {
+            background-color: #e9e9e9;
+        }
+        #reset-button {
+            margin-left: 10px;
+            padding: 5px 10px;
+            font-size: 14px;
+            background-color: #f1f1f1;
+            border: 1px solid #d4d4d4;
+            border-radius: 4px;
+            cursor: pointer;
+        }
+        #reset-button:hover {
+            background-color: #e9e9e9;
         }
     </style>
 </head>
 <body>
-    <div id="graph-container"></div>
+    <div id="graph-container">
+        <div id="search-container">
+            <input type="text" id="search-input" placeholder="Search tag">
+            <button id="reset-button">Reset</button>
+            <div id="autocomplete-list"></div>
+        </div>
+    </div>
     <div id="tooltip" class="hidden"></div>
     <div id="modal">
         <div id="modal-content">
@@ -113,10 +178,9 @@
     </div>
     <script src="https://d3js.org/d3.v7.min.js"></script>
     <script>
-        // Graph data injected from app.py
-        const graph = <!--GRAPH_DATA_PLACEHOLDER-->;
+        const fullGraph = <!--GRAPH_DATA_PLACEHOLDER-->;
+        let currentGraph = JSON.parse(JSON.stringify(fullGraph));
 
-        // Set up SVG and Zoom
         const width = window.innerWidth;
         const height = 800;
 
@@ -131,76 +195,186 @@
 
         const g = svg.append("g");
 
-        // Define simulation
-        const simulation = d3.forceSimulation(graph.nodes)
-            .force("link", d3.forceLink(graph.links).id(d => d.id).distance(150))
-            .force("charge", d3.forceManyBody().strength(-300))
-            .force("center", d3.forceCenter(width / 2, height / 2));
+        let simulation, link, node;
 
-        // Define links
-        const link = g.append("g")
-            .attr("class", "links")
-            .selectAll("line")
-            .data(graph.links)
-            .enter().append("line")
-            .attr("class", "link");
+        function renderGraph(graphData) {
+            // Clear existing graph
+            g.selectAll("*").remove();
 
-        // Define nodes
-        const node = g.append("g")
-            .attr("class", "nodes")
-            .selectAll("g")
-            .data(graph.nodes)
-            .enter().append("g")
-            .attr("class", d => d.type === 'tag' ? 'node tag-node' : 'node')
-            .on("mouseover", mouseOver)
-            .on("mouseout", mouseOut)
-            .on("click", nodeClicked)
-            .call(drag(simulation));
+            // Recreate simulation with new data
+            simulation = d3.forceSimulation(graphData.nodes)
+                .force("link", d3.forceLink(graphData.links).id(d => d.id).distance(150))
+                .force("charge", d3.forceManyBody().strength(-300))
+                .force("center", d3.forceCenter(width / 2, height / 2));
 
-        // Add images or tag boxes to nodes
-        node.each(function(d) {
-            if (d.type === 'image') {
-                d3.select(this).append("image")
-                    .attr("xlink:href", d.image_data)
-                    .attr("x", -50)
-                    .attr("y", -50)
-                    .attr("width", 100)
-                    .attr("height", 100);
-            } else if (d.type === 'tag') {
-                const group = d3.select(this);
+            // Recreate links
+            link = g.append("g")
+                .attr("class", "links")
+                .selectAll("line")
+                .data(graphData.links)
+                .enter().append("line")
+                .attr("class", "link");
 
-                const text = group.append("text")
-                    .text(d.name)
-                    .attr("dy", 4);
+            // Recreate nodes
+            node = g.append("g")
+                .attr("class", "nodes")
+                .selectAll("g")
+                .data(graphData.nodes)
+                .enter().append("g")
+                .attr("class", d => d.type === 'tag' ? 'node tag-node' : 'node')
+                .on("mouseover", mouseOver)
+                .on("mouseout", mouseOut)
+                .on("click", nodeClicked)
+                .call(drag(simulation));
 
-                const bbox = text.node().getBBox();
-                group.insert("rect", "text")
-                    .attr("x", bbox.x - 5)
-                    .attr("y", bbox.y - 2)
-                    .attr("width", bbox.width + 10)
-                    .attr("height", bbox.height + 4);
-            }
-        });
-
-        // Tooltip
-        const tooltip = d3.select("#tooltip");
-
-        function mouseOver(event, d) {
-            // Highlight connected nodes
-            const connectedNodes = new Set();
-            connectedNodes.add(d.id);
-            graph.links.forEach(link => {
-                if (link.source.id === d.id) {
-                    connectedNodes.add(link.target.id);
-                } else if (link.target.id === d.id) {
-                    connectedNodes.add(link.source.id);
+            // Add images or tag boxes to nodes
+            node.each(function(d) {
+                if (d.type === 'image') {
+                    d3.select(this).append("image")
+                        .attr("xlink:href", d.image_data)
+                        .attr("x", -50)
+                        .attr("y", -50)
+                        .attr("width", 100)
+                        .attr("height", 100);
+                } else if (d.type === 'tag') {
+                    const group = d3.select(this);
+                    const text = group.append("text")
+                        .text(d.name)
+                        .attr("dy", 4);
+                    const bbox = text.node().getBBox();
+                    group.insert("rect", "text")
+                        .attr("x", bbox.x - 5)
+                        .attr("y", bbox.y - 2)
+                        .attr("width", bbox.width + 10)
+                        .attr("height", bbox.height + 4);
                 }
             });
-            node.classed('hidden', n => !connectedNodes.has(n.id));
-            link.classed('hidden', l => !(connectedNodes.has(l.source.id) && connectedNodes.has(l.target.id)));
 
-            // Show tooltip
-            tooltip
+            // Update simulation
+            simulation.nodes(graphData.nodes).on("tick", ticked);
+            simulation.force("link").links(graphData.links);
+        }
+
+        function ticked() {
+            link
+                .attr("x1", d => d.source.x)
+                .attr("y1", d => d.source.y)
+                .attr("x2", d => d.target.x)
+                .attr("y2", d => d.target.y);
+
+            node
+                .attr("transform", d => `translate(${d.x},${d.y})`);
+        }
+
+        function filterGraph(tagName) {
+            const connectedNodes = new Set();
+            const connectedLinks = [];
+
+            // Level 1: Find the selected tag node
+            const tagNode = fullGraph.nodes.find(node => node.type === 'tag' && node.name === tagName);
+            if (!tagNode) {
+                console.error('Tag not found:', tagName);
+                return;
+            }
+            connectedNodes.add(tagNode.id);
+
+            // Find images connected to the tag
+            const connectedImages = new Set();
+            fullGraph.links.forEach(link => {
+                const sourceId = getNodeId(link.source);
+                const targetId = getNodeId(link.target);
+
+                if (sourceId === tagNode.id) {
+                    const targetNode = getNodeById(targetId);
+                    if (targetNode.type === 'image') {
+                        connectedNodes.add(targetId);
+                        connectedLinks.push({
+                            source: tagNode,
+                            target: targetNode
+                        });
+                        connectedImages.add(targetId);
+                    }
+                } else if (targetId === tagNode.id) {
+                    const sourceNode = getNodeById(sourceId);
+                    if (sourceNode.type === 'image') {
+                        connectedNodes.add(sourceId);
+                        connectedLinks.push({
+                            source: sourceNode,
+                            target: tagNode
+                        });
+                        connectedImages.add(sourceId);
+                    }
+                }
+            });
+
+            // Level 2: Find tags connected to the images from Level 1 (excluding the original tag)
+            connectedImages.forEach(imageId => {
+                fullGraph.links.forEach(link => {
+                    const sourceId = getNodeId(link.source);
+                    const targetId = getNodeId(link.target);
+
+                    if (sourceId === imageId) {
+                        const targetNode = getNodeById(targetId);
+                        if (targetNode.type === 'tag' && targetNode.id !== tagNode.id) {
+                            connectedNodes.add(targetId);
+                            connectedLinks.push({
+                                source: getNodeById(imageId),
+                                target: targetNode
+                            });
+                        }
+                    } else if (targetId === imageId) {
+                        const sourceNode = getNodeById(sourceId);
+                        if (sourceNode.type === 'tag' && sourceNode.id !== tagNode.id) {
+                            connectedNodes.add(sourceId);
+                            connectedLinks.push({
+                                source: sourceNode,
+                                target: getNodeById(imageId)
+                            });
+                        }
+                    }
+                });
+            });
+
+            // Create filtered graph data
+            currentGraph = {
+                nodes: fullGraph.nodes.filter(n => connectedNodes.has(n.id)),
+                links: connectedLinks
+            };
+
+            // Render the new filtered graph
+            renderGraph(currentGraph);
+        }
+
+        function getNodeId(node) {
+            return typeof node === 'object' ? node.id : node;
+        }
+
+        function getNodeById(id) {
+            return fullGraph.nodes.find(node => node.id === id);
+        }
+
+        function resetGraph() {
+            currentGraph = JSON.parse(JSON.stringify(fullGraph));
+            renderGraph(currentGraph);
+        }
+
+        function mouseOver(event, d) {
+            const connectedNodes = new Set([d.id]);
+            currentGraph.links.forEach(link => {
+                const sourceId = getNodeId(link.source);
+                const targetId = getNodeId(link.target);
+
+                if (sourceId === d.id) connectedNodes.add(targetId);
+                if (targetId === d.id) connectedNodes.add(sourceId);
+            });
+            node.classed('hidden', n => !connectedNodes.has(n.id));
+            link.classed('hidden', l => {
+                const sourceId = getNodeId(l.source);
+                const targetId = getNodeId(l.target);
+                return !(connectedNodes.has(sourceId) && connectedNodes.has(targetId));
+            });
+
+            d3.select("#tooltip")
                 .style('left', (event.pageX + 10) + 'px')
                 .style('top', (event.pageY + 10) + 'px')
                 .html(d.type === 'image' ? d.filename : d.name)
@@ -208,72 +382,33 @@
         }
 
         function mouseOut(event, d) {
-            // Reset opacity
             node.classed('hidden', false);
             link.classed('hidden', false);
-
-            // Hide tooltip
-            tooltip.classed('hidden', true);
+            d3.select("#tooltip").classed('hidden', true);
         }
 
         function nodeClicked(event, d) {
-            if (d.type === 'image') {
-                // Display modal with image information
+            if (d.type === 'tag') {
+                resetGraph();  // First reset to full graph
+                filterGraph(d.name);  // Then filter based on the clicked tag
+            } else if (d.type === 'image') {
                 showModal(d);
-            } else if (d.type === 'tag') {
-                // Filter graph to show only nodes connected to this tag
-                filterGraph(d);
             }
-        }
-
-        function filterGraph(tagNode) {
-            const connectedNodes = new Set();
-            const secondLevelNodes = new Set();
-            connectedNodes.add(tagNode.id);
-            graph.links.forEach(link => {
-                if (link.source.id === tagNode.id) {
-                    connectedNodes.add(link.target.id);
-                } else if (link.target.id === tagNode.id) {
-                    connectedNodes.add(link.source.id);
-                }
-            });
-            // Get second level connections (tags connected to images)
-            graph.links.forEach(link => {
-                if (connectedNodes.has(link.source.id) && !connectedNodes.has(link.target.id)) {
-                    secondLevelNodes.add(link.target.id);
-                } else if (connectedNodes.has(link.target.id) && !connectedNodes.has(link.source.id)) {
-                    secondLevelNodes.add(link.source.id);
-                }
-            });
-            const visibleNodes = new Set([...connectedNodes, ...secondLevelNodes]);
-            node.classed('hidden', n => !visibleNodes.has(n.id));
-            link.classed('hidden', l => !(visibleNodes.has(l.source.id) && visibleNodes.has(l.target.id)));
         }
 
         function showModal(d) {
             const modal = document.getElementById("modal");
             const modalContent = document.getElementById("modal-body");
+            const tagHtml = d.tags.map(tag => `<span class="modal-tag" onclick="filterGraph('${tag}')">${tag}</span>`).join(' ');
             modalContent.innerHTML = `
                 <h2>${d.filename}</h2>
                 <p><strong>Description:</strong> ${d.description}</p>
+                <p><strong>Tags:</strong> ${tagHtml}</p>
                 <img src="${d.image_data}" alt="${d.filename}">
             `;
             modal.style.display = "block";
         }
 
-        document.getElementById("close-button").addEventListener("click", () => {
-            document.getElementById("modal").style.display = "none";
-        });
-
-        // Close modal when clicking outside of the content
-        window.addEventListener("click", (event) => {
-            const modal = document.getElementById("modal");
-            if (event.target == modal) {
-                modal.style.display = "none";
-            }
-        });
-
-        // Drag functionality
         function drag(simulation) {
             function dragstarted(event, d) {
                 if (!event.active) simulation.alphaTarget(0.3).restart();
@@ -298,17 +433,67 @@
                 .on("end", dragended);
         }
 
-        // Simulation tick
-        simulation.on("tick", () => {
-            link
-                .attr("x1", d => d.source.x)
-                .attr("y1", d => d.source.y)
-                .attr("x2", d => d.target.x)
-                .attr("y2", d => d.target.y);
+        const searchInput = document.getElementById('search-input');
+        const autocompleteList = document.getElementById('autocomplete-list');
 
-            node
-                .attr("transform", d => `translate(${d.x},${d.y})`);
+        searchInput.addEventListener('input', function() {
+            const inputVal = this.value.toLowerCase();
+            autocompleteList.innerHTML = '';
+            if (!inputVal) {
+                resetGraph();
+                return;
+            }
+
+            const matchingTags = fullGraph.nodes
+                .filter(node => node.type === 'tag' && node.name.toLowerCase().startsWith(inputVal))
+                .map(node => node.name);
+
+            matchingTags.forEach(tag => {
+                const div = document.createElement('div');
+                div.innerHTML = tag;
+                div.addEventListener('click', function() {
+                    searchInput.value = this.innerHTML;
+                    filterGraph(this.innerHTML);
+                    autocompleteList.innerHTML = '';
+                });
+                div.className = 'autocomplete-items';
+                autocompleteList.appendChild(div);
+            });
         });
+
+        document.addEventListener('click', function(e) {
+            if (e.target !== searchInput && e.target !== autocompleteList) {
+                autocompleteList.innerHTML = '';
+            }
+        });
+
+        searchInput.addEventListener('keydown', function(e) {
+            if (e.key === 'Enter') {
+                const inputVal = this.value.toLowerCase();
+                const matchingTag = fullGraph.nodes.find(node => node.type === 'tag' && node.name.toLowerCase() === inputVal);
+                if (matchingTag) {
+                    filterGraph(matchingTag.name);
+                }
+                autocompleteList.innerHTML = '';
+            }
+        });
+
+        document.getElementById("close-button").addEventListener("click", () => {
+            document.getElementById("modal").style.display = "none";
+        });
+
+        document.getElementById("reset-button").addEventListener("click", resetGraph);
+
+        window.addEventListener("click", (event) => {
+            const modal = document.getElementById("modal");
+            if (event.target == modal) {
+                modal.style.display = "none";
+            }
+        });
+
+        // Initial render
+        renderGraph(currentGraph);
+        window.filterGraph = filterGraph;
     </script>
 </body>
 </html>

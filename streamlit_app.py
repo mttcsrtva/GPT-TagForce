@@ -356,14 +356,11 @@ def prepare_graph_data(project_data):
     nodes = []
     links = []
     node_ids = {}
-    tag_ids = {}
     idx_counter = 0
 
-    # Build nodes and edges
     for item in project_data["images"]:
         # Image node
         image_id = f"image_{idx_counter}"
-        node_ids[item['filename']] = image_id
         idx_counter += 1
 
         # Encode image to base64
@@ -378,21 +375,20 @@ def prepare_graph_data(project_data):
             'type': 'image',
             'filename': item['original_filename'],
             'description': item.get('description', ''),
-            'image_data': img_src  # Use base64 encoded image
+            'image_data': img_src,
+            'tags': item.get('tags', [])
         })
 
         # Tag nodes and links
         for tag in item.get('tags', []):
-            if tag not in tag_ids:
-                tag_id = f"tag_{len(tag_ids)}"
-                tag_ids[tag] = tag_id
+            tag_id = f"tag_{tag}"
+            if tag_id not in node_ids:
                 nodes.append({
                     'id': tag_id,
                     'type': 'tag',
                     'name': tag
                 })
-            else:
-                tag_id = tag_ids[tag]
+                node_ids[tag_id] = True
 
             # Link between image and tag
             links.append({
